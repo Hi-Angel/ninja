@@ -147,7 +147,7 @@ struct Edge {
   Edge() : rule_(NULL), pool_(NULL), dyndep_(NULL), env_(NULL),
            mark_(VisitNone), outputs_ready_(false), deps_loaded_(false),
            deps_missing_(false), implicit_deps_(0), order_only_deps_(0),
-           implicit_outs_(0) {}
+           implicit_outs_(0), most_recent_input_mtime(0) {}
 
   /// Return true if all inputs' in-edges are ready.
   bool AllInputsReady() const;
@@ -217,6 +217,18 @@ struct Edge {
   bool is_phony() const;
   bool use_console() const;
   bool maybe_phonycycle_diagnostic() const;
+
+  // May be actual mtime as well as just 0
+  TimeStamp most_recent_input_mtime;
+};
+
+
+struct EdgeComparator {
+  bool operator()(const Edge* lhs, const Edge* rhs) const {
+    return (lhs->most_recent_input_mtime != rhs->most_recent_input_mtime)
+      ? lhs->most_recent_input_mtime > rhs->most_recent_input_mtime
+      : lhs > rhs;
+  }
 };
 
 

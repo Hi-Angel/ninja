@@ -338,7 +338,7 @@ bool Plan::AddSubTarget(Node* node, Node* dependent, string* err,
 
   // If an entry in want_ does not already exist for edge, create an entry which
   // maps to kWantNothing, indicating that we do not want to build this entry itself.
-  pair<map<Edge*, Want>::iterator, bool> want_ins =
+  pair<map<Edge*, Want, EdgeComparator>::iterator, bool> want_ins =
     want_.insert(make_pair(edge, kWantNothing));
   Want& want = want_ins.first->second;
 
@@ -384,7 +384,7 @@ Edge* Plan::FindWork() {
   return edge;
 }
 
-void Plan::ScheduleWork(map<Edge*, Want>::iterator want_e) {
+void Plan::ScheduleWork(map<Edge*, Want, EdgeComparator>::iterator want_e) {
   if (want_e->second == kWantToFinish) {
     // This edge has already been scheduled.  We can get here again if an edge
     // and one of its dependencies share an order-only input, or if a node
@@ -407,7 +407,7 @@ void Plan::ScheduleWork(map<Edge*, Want>::iterator want_e) {
 }
 
 bool Plan::EdgeFinished(Edge* edge, EdgeResult result, string* err) {
-  map<Edge*, Want>::iterator e = want_.find(edge);
+  map<Edge*, Want, EdgeComparator>::iterator e = want_.find(edge);
   assert(e != want_.end());
   bool directly_wanted = e->second != kWantNothing;
 
@@ -446,7 +446,7 @@ bool Plan::NodeFinished(Node* node, string* err) {
   // See if we we want any edges from this node.
   for (vector<Edge*>::const_iterator oe = node->out_edges().begin();
        oe != node->out_edges().end(); ++oe) {
-    map<Edge*, Want>::iterator want_e = want_.find(*oe);
+    map<Edge*, Want, EdgeComparator>::iterator want_e = want_.find(*oe);
     if (want_e == want_.end())
       continue;
 
@@ -457,7 +457,7 @@ bool Plan::NodeFinished(Node* node, string* err) {
   return true;
 }
 
-bool Plan::EdgeMaybeReady(map<Edge*, Want>::iterator want_e, string* err) {
+bool Plan::EdgeMaybeReady(map<Edge*, Want, EdgeComparator>::iterator want_e, string* err) {
   Edge* edge = want_e->first;
   if (edge->AllInputsReady()) {
     if (want_e->second != kWantNothing) {
@@ -478,7 +478,7 @@ bool Plan::CleanNode(DependencyScan* scan, Node* node, string* err) {
   for (vector<Edge*>::const_iterator oe = node->out_edges().begin();
        oe != node->out_edges().end(); ++oe) {
     // Don't process edges that we don't actually want.
-    map<Edge*, Want>::iterator want_e = want_.find(*oe);
+    map<Edge*, Want, EdgeComparator>::iterator want_e = want_.find(*oe);
     if (want_e == want_.end() || want_e->second == kWantNothing)
       continue;
 
@@ -550,7 +550,7 @@ bool Plan::DyndepsLoaded(DependencyScan* scan, Node* node,
     if (edge->outputs_ready())
       continue;
 
-    map<Edge*, Want>::iterator want_e = want_.find(edge);
+    map<Edge*, Want, EdgeComparator>::iterator want_e = want_.find(edge);
 
     // If the edge has not been encountered before then nothing already in the
     // plan depends on it so we do not need to consider the edge yet either.
@@ -578,7 +578,7 @@ bool Plan::DyndepsLoaded(DependencyScan* scan, Node* node,
   // Plan::NodeFinished would have without taking the dyndep code path).
   for (vector<Edge*>::const_iterator oe = node->out_edges().begin();
        oe != node->out_edges().end(); ++oe) {
-    map<Edge*, Want>::iterator want_e = want_.find(*oe);
+    map<Edge*, Want, EdgeComparator>::iterator want_e = want_.find(*oe);
     if (want_e == want_.end())
       continue;
     dyndep_walk.insert(want_e->first);
@@ -587,7 +587,7 @@ bool Plan::DyndepsLoaded(DependencyScan* scan, Node* node,
   // See if any encountered edges are now ready.
   for (set<Edge*>::iterator wi = dyndep_walk.begin();
        wi != dyndep_walk.end(); ++wi) {
-    map<Edge*, Want>::iterator want_e = want_.find(*wi);
+    map<Edge*, Want, EdgeComparator>::iterator want_e = want_.find(*wi);
     if (want_e == want_.end())
       continue;
     if (!EdgeMaybeReady(want_e, err))
@@ -621,7 +621,7 @@ bool Plan::RefreshDyndepDependents(DependencyScan* scan, Node* node,
     // information an output is now known to be dirty, so we want the edge.
     Edge* edge = n->in_edge();
     assert(edge && !edge->outputs_ready());
-    map<Edge*, Want>::iterator want_e = want_.find(edge);
+    map<Edge*, Want, EdgeComparator>::iterator want_e = want_.find(edge);
     assert(want_e != want_.end());
     if (want_e->second == kWantNothing) {
       want_e->second = kWantToStart;
@@ -636,7 +636,7 @@ void Plan::UnmarkDependents(Node* node, set<Node*>* dependents) {
        oe != node->out_edges().end(); ++oe) {
     Edge* edge = *oe;
 
-    map<Edge*, Want>::iterator want_e = want_.find(edge);
+    map<Edge*, Want, EdgeComparator>::iterator want_e = want_.find(edge);
     if (want_e == want_.end())
       continue;
 
@@ -653,7 +653,7 @@ void Plan::UnmarkDependents(Node* node, set<Node*>* dependents) {
 
 void Plan::Dump() {
   printf("pending: %d\n", (int)want_.size());
-  for (map<Edge*, Want>::iterator e = want_.begin(); e != want_.end(); ++e) {
+  for (map<Edge*, Want, EdgeComparator>::iterator e = want_.begin(); e != want_.end(); ++e) {
     if (e->second != kWantNothing)
       printf("want ");
     e->first->Dump();

@@ -109,18 +109,18 @@ private:
   };
 
   void EdgeWanted(Edge* edge);
-  bool EdgeMaybeReady(map<Edge*, Want>::iterator want_e, string* err);
+  bool EdgeMaybeReady(map<Edge*, Want, EdgeComparator>::iterator want_e, string* err);
 
   /// Submits a ready edge as a candidate for execution.
   /// The edge may be delayed from running, for example if it's a member of a
   /// currently-full pool.
-  void ScheduleWork(map<Edge*, Want>::iterator want_e);
+  void ScheduleWork(map<Edge*, Want, EdgeComparator>::iterator want_e);
 
   /// Keep track of which edges we want to build in this plan.  If this map does
   /// not contain an entry for an edge, we do not want to build the entry or its
   /// dependents.  If it does contain an entry, the enumeration indicates what
   /// we want for the edge.
-  map<Edge*, Want> want_;
+  map<Edge*, Want, EdgeComparator> want_;
 
   set<Edge*> ready_;
 
